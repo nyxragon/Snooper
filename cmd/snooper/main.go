@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -36,7 +37,7 @@ from web pages, PDFs, Office documents, and text files.`,
 
 func init() {
 	rootCmd.Flags().StringVarP(&urlFlag, "url", "u", "", "Comma-separated URLs to fetch")
-	rootCmd.Flags().StringVarP(&fileFlag, "file", "f", "", "Path to a file containing URLs (one per line)")
+	rootCmd.Flags().StringVarP(&fileFlag, "file", "f", "", "Path to a file containing URLs (one per line). Use - to read from stdin")
 	rootCmd.Flags().StringVarP(&snoopFlag, "snoop", "s", "drive", "Types of links to extract (drive, sharepoint, dropbox, onedrive, box, icloud, all)")
 	rootCmd.Flags().IntVarP(&workers, "workers", "w", 5, "Number of concurrent workers")
 	rootCmd.Flags().IntVarP(&timeout, "timeout", "t", 60, "HTTP read timeout in seconds")
@@ -47,7 +48,13 @@ func init() {
 func run(cmd *cobra.Command, args []string) error {
 	var urls []string
 
-	if fileFlag != "" {
+	if fileFlag == "-" {
+		content, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
+		urls = strings.Split(string(content), "\n")
+	} else if fileFlag != "" {
 		content, err := os.ReadFile(fileFlag)
 		if err != nil {
 			return fmt.Errorf("failed to read file: %w", err)

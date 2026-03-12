@@ -16,6 +16,7 @@
   <a href="#features">Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
+  <a href="#recon-workflow">Recon Workflow</a> •
   <a href="#future-scope">Future Scope</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#license">License</a>
@@ -57,7 +58,7 @@ Snooper extracts cloud storage links from either directly provided URLs or from 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--url` | `-u` | | Comma-separated URLs to process |
-| `--file` | `-f` | | Path to a file containing URLs (one per line) |
+| `--file` | `-f` | | Path to a file containing URLs (one per line). Use `-` to read from stdin |
 | `--snoop` | `-s` | `drive` | Services to extract: `drive`, `sharepoint`, `dropbox`, `onedrive`, `box`, `icloud`, or `all` |
 | `--workers` | `-w` | `5` | Number of concurrent workers |
 | `--timeout` | `-t` | `60` | HTTP read timeout in seconds |
@@ -85,6 +86,49 @@ Snooper extracts cloud storage links from either directly provided URLs or from 
    ```bash
    ./snooper --snoop all --file urls.txt --output json
    ```
+
+## Recon Workflow
+
+Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL discovery. It fetches the URLs you provide and extracts cloud storage links from their content.
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│  URL Discovery      │     │  Snooper             │     │  Manual Review      │
+│  (other tools)      │────▶│  Fetch & Extract     │────▶│  Check permissions   │
+│                     │     │  cloud links         │     │  Test for exposure   │
+└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+       │                              │
+       │                              │
+       ▼                              ▼
+  waybackurls              Drive, SharePoint,
+  gau, httpx               Dropbox, OneDrive,
+  crawlers                 Box, iCloud links
+```
+
+### Where Snooper Sits
+
+| Step | Tool / Phase | Output |
+|------|--------------|--------|
+| 1 | waybackurls, gau, crawlers | List of URLs |
+| 2 | **Snooper** | Cloud storage links from those URLs |
+| 3 | Manual review | Misconfigs, exposed content, IDOR |
+
+### Piping from URL Discovery Tools
+
+Use `-` with `--file` to read URLs from stdin:
+
+```bash
+# Wayback Machine URLs → Snooper
+echo "target.com" | waybackurls | snooper --file - --snoop all
+
+# GAU (GetAllUrls) → Snooper
+echo "target.com" | gau | snooper --file - --snoop all --workers 10
+
+# Filter live URLs first, then extract cloud links
+echo "target.com" | waybackurls | httpx -mc 200 -silent | snooper --file - --snoop all --output json
+```
+
+Snooper does not discover URLs itself. Pair it with your existing recon tools.
 
 ## Future Scope
 
