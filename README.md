@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A fast, reliable CLI tool to extract cloud storage links from URLs and documents</strong>
+  <strong>Fetches web pages and documents (PDF, Office, HTML), parses their content, and extracts cloud storage links embedded inside</strong>
 </p>
 
 <p align="center">
@@ -28,20 +28,20 @@
 ## Features
 
 - **Multiple cloud services**: Google Drive, SharePoint, Dropbox, OneDrive, Box, iCloud
-- **Wide format support**: HTML, PDF, TXT, PPTX, DOCX, XLSX, ODT, ODS
-- **Concurrent processing**: Configurable worker pool for parallel URL fetching
+- **Parses multiple formats**: Fetches and extracts text from HTML pages, PDFs, PPTX, DOCX, XLSX, ODT, ODS, TXT
+- **Concurrent processing**: Configurable worker pool for parallel fetching
 - **Reliable**: HTTP retries with exponential backoff, connection pooling, timeouts
 - **Flexible output**: Text (default) or JSON for scripting
 
 ## Recon Workflow
 
-Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL discovery. It fetches the URLs you provide and extracts cloud storage links from their content.
+Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL discovery. You feed it URLs to **pages and documents** (not cloud links). It fetches each one, parses the content (HTML, PDF, Office, etc.), and extracts any cloud storage links embedded inside.
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
 │  URL Discovery      │     │  Snooper             │     │  Manual Review      │
-│  (other tools)      │────▶│  Fetch & Extract     │────▶│  Check permissions   │
-│                     │     │  cloud links         │     │  Test for exposure   │
+│  (pages, PDFs,     │────▶│  Fetch → Parse       │────▶│  Check permissions   │
+│   Office docs)      │     │  → Extract links     │     │  Test for exposure   │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
        │                              │
        │                              │
@@ -55,26 +55,26 @@ Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL 
 
 | Step | Tool / Phase | Output |
 |------|--------------|--------|
-| 1 | waybackurls, gau, crawlers | List of URLs |
-| 2 | **Snooper** | Cloud storage links from those URLs |
+| 1 | waybackurls, gau, crawlers | URLs to web pages, PDFs, presentations, etc. |
+| 2 | **Snooper** | Fetches each URL, parses the document, extracts cloud links found in the content |
 | 3 | Manual review | Misconfigs, exposed content, IDOR |
 
 ### Piping from URL Discovery Tools
 
-Use `-` with `--file` to read URLs from stdin:
+Use `-` with `--file` to read URLs from stdin. Snooper will fetch each URL, parse the page or document, and extract cloud storage links from the content:
 
 ```bash
-# Wayback Machine URLs → Snooper
+# Wayback URLs (pages, PDFs, etc.) → Snooper fetches & parses each → extracts cloud links
 echo "target.com" | waybackurls | snooper --file - --snoop all
 
 # GAU (GetAllUrls) → Snooper
 echo "target.com" | gau | snooper --file - --snoop all --workers 10
 
-# Filter live URLs first, then extract cloud links
+# Filter live URLs first, then Snooper parses their content for cloud links
 echo "target.com" | waybackurls | httpx -mc 200 -silent | snooper --file - --snoop all --output json
 ```
 
-Snooper does not discover URLs itself. Pair it with your existing recon tools.
+Snooper does not discover URLs itself. It takes URLs as input, fetches the content at each URL, and extracts cloud links from within that content.
 
 ## Limitations
 
@@ -101,14 +101,14 @@ Snooper does not discover URLs itself. Pair it with your existing recon tools.
 
 ## Usage
 
-Snooper extracts cloud storage links from either directly provided URLs or from a file containing multiple URLs.
+Provide URLs to web pages or documents (HTML, PDF, Office files, etc.). Snooper fetches each URL, parses the content, and extracts cloud storage links embedded inside.
 
 ### Command-line Options
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--url` | `-u` | | Comma-separated URLs to process |
-| `--file` | `-f` | | Path to a file containing URLs (one per line). Use `-` to read from stdin |
+| `--url` | `-u` | | Comma-separated URLs to pages or documents to fetch and parse |
+| `--file` | `-f` | | Path to a file containing URLs to pages/documents (one per line). Use `-` to read from stdin |
 | `--snoop` | `-s` | `drive` | Services to extract: `drive`, `sharepoint`, `dropbox`, `onedrive`, `box`, `icloud`, or `all` |
 | `--workers` | `-w` | `5` | Number of concurrent workers |
 | `--timeout` | `-t` | `60` | HTTP read timeout in seconds |
@@ -120,17 +120,17 @@ Snooper extracts cloud storage links from either directly provided URLs or from 
 
 ### Examples
 
-1. **Extract Dropbox links from a file**:
+1. **Parse documents from a URL list** (Snooper fetches each, parses content, extracts links):
    ```bash
    ./snooper --snoop dropbox --file path/to/urls.txt
    ```
 
-2. **Extract all cloud links from given URLs**:
+2. **Parse a PDF and a presentation** (extracts cloud links from inside the documents):
    ```bash
    ./snooper --snoop all --url "https://example.com/file1.pdf","https://example.com/file2.pptx"
    ```
 
-3. **Extract Google Drive and SharePoint links with 10 workers**:
+3. **Parse a web page** (extracts cloud links from the HTML content):
    ```bash
    ./snooper --snoop drive,sharepoint --url "https://example.com/page.html" --workers 10
    ```
