@@ -21,16 +21,21 @@ var ServiceDisplayNames = map[string]string{
 }
 
 // Format writes results in the specified format
-func Format(w io.Writer, results []pipeline.Result, format string) error {
+func Format(w io.Writer, results []pipeline.Result, format string, checkAccess bool) error {
 	switch format {
 	case "json":
-		return formatJSON(w, results)
+		return formatJSON(w, results, checkAccess)
 	default:
-		return formatText(w, results)
+		return formatText(w, results, checkAccess)
 	}
 }
 
-func formatText(w io.Writer, results []pipeline.Result) error {
+func formatText(w io.Writer, results []pipeline.Result, checkAccess bool) error {
+	order := []string{
+		matcher.ServiceDrive, matcher.ServiceSharePoint, matcher.ServiceDropbox,
+		matcher.ServiceOneDrive, matcher.ServiceBox, matcher.ServiceICloud,
+	}
+
 	for _, r := range results {
 		if r.Error != nil {
 			fmt.Fprintf(w, "Processing URL: %s\n", r.URL)
@@ -40,24 +45,35 @@ func formatText(w io.Writer, results []pipeline.Result) error {
 
 		fmt.Fprintf(w, "Processing URL: %s\n", r.URL)
 
-		// Order services for consistent output
-		order := []string{
-			matcher.ServiceDrive, matcher.ServiceSharePoint, matcher.ServiceDropbox,
-			matcher.ServiceOneDrive, matcher.ServiceBox, matcher.ServiceICloud,
-		}
-
-		for _, svc := range order {
-			links, ok := r.Links[svc]
-			if !ok || len(links) == 0 {
-				continue
+		if checkAccess && len(r.LinksWithStatus) > 0 {
+			for _, svc := range order {
+				links, ok := r.LinksWithStatus[svc]
+				if !ok || len(links) == 0 {
+					continue
+				}
+				name := ServiceDisplayNames[svc]
+				if name == "" {
+					name = svc
+				}
+				fmt.Fprintf(w, "Found %s links:\n", name)
+				for _, l := range links {
+					fmt.Fprintf(w, "  %s (%d)\n", l.URL, l.Status)
+				}
 			}
-			name := ServiceDisplayNames[svc]
-			if name == "" {
-				name = svc
-			}
-			fmt.Fprintf(w, "Found %s links:\n", name)
-			for _, link := range links {
-				fmt.Fprintln(w, link)
+		} else {
+			for _, svc := range order {
+				links, ok := r.Links[svc]
+				if !ok || len(links) == 0 {
+					continue
+				}
+				name := ServiceDisplayNames[svc]
+				if name == "" {
+					name = svc
+				}
+				fmt.Fprintf(w, "Found %s links:\n", name)
+				for _, link := range links {
+					fmt.Fprintln(w, link)
+				}
 			}
 		}
 		fmt.Fprintln(w)
@@ -65,11 +81,17 @@ func formatText(w io.Writer, results []pipeline.Result) error {
 	return nil
 }
 
-func formatJSON(w io.Writer, results []pipeline.Result) error {
+func formatJSON(w io.Writer, results []pipeline.Result, checkAccess bool) error {
+	type linkEntry struct {
+		URL    string `json:"url"`
+		Status int    `json:"status,omitempty"`
+	}
+
 	type urlResult struct {
-		URL   string            `json:"url"`
-		Links map[string][]string `json:"links,omitempty"`
-		Error string            `json:"error,omitempty"`
+		URL             string                   `json:"url"`
+		Links           map[string][]string      `json:"links,omitempty"`
+		LinksWithStatus map[string][]linkEntry   `json:"links_with_status,omitempty"`
+		Error           string                  `json:"error,omitempty"`
 	}
 
 	var out []urlResult
@@ -77,6 +99,13 @@ func formatJSON(w io.Writer, results []pipeline.Result) error {
 		ur := urlResult{URL: r.URL}
 		if r.Error != nil {
 			ur.Error = r.Error.Error()
+		} else if checkAccess && len(r.LinksWithStatus) > 0 {
+			ur.LinksWithStatus = make(map[string][]linkEntry)
+			for svc, links := range r.LinksWithStatus {
+				for _, l := range links {
+					ur.LinksWithStatus[svc] = append(ur.LinksWithStatus[svc], linkEntry{URL: l.URL, Status: l.Status})
+				}
+			}
 		} else {
 			ur.Links = r.Links
 		}

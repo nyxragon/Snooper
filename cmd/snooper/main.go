@@ -18,14 +18,19 @@ func main() {
 }
 
 var (
-	urlFlag    string
-	fileFlag   string
-	snoopFlag  string
-	workers    int
-	timeout    int
-	retries    int
-	outputFmt  string
+	urlFlag      string
+	fileFlag     string
+	snoopFlag    string
+	workers      int
+	timeout      int
+	retries      int
+	outputFmt    string
+	delay        int
+	userAgent    string
+	checkAccess  bool
 )
+
+const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0"
 
 var rootCmd = &cobra.Command{
 	Use:   "snooper",
@@ -43,6 +48,9 @@ func init() {
 	rootCmd.Flags().IntVarP(&timeout, "timeout", "t", 60, "HTTP read timeout in seconds")
 	rootCmd.Flags().IntVarP(&retries, "retries", "r", 3, "HTTP retry attempts")
 	rootCmd.Flags().StringVarP(&outputFmt, "output", "o", "text", "Output format: text or json")
+	rootCmd.Flags().IntVarP(&delay, "delay", "d", 0, "Delay in milliseconds between requests per worker (0 = no delay)")
+	rootCmd.Flags().StringVarP(&userAgent, "user-agent", "a", defaultUserAgent, "HTTP User-Agent header")
+	rootCmd.Flags().BoolVarP(&checkAccess, "check-access", "c", false, "HEAD each discovered link to check accessibility")
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -68,11 +76,19 @@ func run(cmd *cobra.Command, args []string) error {
 
 	services := output.ParseServices(snoopFlag)
 
+	ua := userAgent
+	if ua == "" {
+		ua = defaultUserAgent
+	}
+
 	cfg := pipeline.Config{
-		Workers:  workers,
-		Timeout:  timeout,
-		Retries:  retries,
-		Services: services,
+		Workers:      workers,
+		Timeout:      timeout,
+		Retries:      retries,
+		Services:     services,
+		Delay:        delay,
+		UserAgent:    ua,
+		CheckAccess:  checkAccess,
 	}
 
 	pipe, err := pipeline.New(cfg)
@@ -82,5 +98,5 @@ func run(cmd *cobra.Command, args []string) error {
 
 	results := pipe.Run(urls)
 
-	return output.Format(os.Stdout, results, outputFmt)
+	return output.Format(os.Stdout, results, outputFmt, checkAccess)
 }

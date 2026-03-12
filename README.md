@@ -17,6 +17,7 @@
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
   <a href="#recon-workflow">Recon Workflow</a> •
+  <a href="#limitations">Limitations</a> •
   <a href="#future-scope">Future Scope</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#license">License</a>
@@ -75,6 +76,12 @@ echo "target.com" | waybackurls | httpx -mc 200 -silent | snooper --file - --sno
 
 Snooper does not discover URLs itself. Pair it with your existing recon tools.
 
+## Limitations
+
+- **No JavaScript execution** - Fetches raw HTML. Best for static content, PDFs, and Office documents. Links loaded dynamically in SPAs may not be found.
+- **Unauthenticated only** - No cookies or auth headers. Targets public exposure.
+- **Rate limiting** - Use `--delay` when scanning live targets to avoid WAF/ban.
+
 ## Installation
 
 1. **Clone the repository**:
@@ -107,6 +114,9 @@ Snooper extracts cloud storage links from either directly provided URLs or from 
 | `--timeout` | `-t` | `60` | HTTP read timeout in seconds |
 | `--retries` | `-r` | `3` | HTTP retry attempts |
 | `--output` | `-o` | `text` | Output format: `text` or `json` |
+| `--delay` | `-d` | `0` | Delay in ms between requests per worker (use for polite scanning) |
+| `--user-agent` | `-a` | Firefox-like | HTTP User-Agent header |
+| `--check-access` | `-c` | `false` | HEAD each discovered link to check accessibility |
 
 ### Examples
 
@@ -128,6 +138,11 @@ Snooper extracts cloud storage links from either directly provided URLs or from 
 4. **JSON output for scripting**:
    ```bash
    ./snooper --snoop all --file urls.txt --output json
+   ```
+
+5. **Polite scanning with delay and access check**:
+   ```bash
+   ./snooper --file urls.txt --snoop all --delay 200 --check-access
    ```
 
 ## Future Scope

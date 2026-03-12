@@ -32,10 +32,15 @@ type Fetcher struct {
 	retries   int
 	timeout   time.Duration
 	dumpDir   string
+	userAgent string
 }
 
 // New creates a Fetcher with the given configuration
-func New(timeout time.Duration, retries int) *Fetcher {
+func New(timeout time.Duration, retries int, userAgent string) *Fetcher {
+	ua := userAgent
+	if ua == "" {
+		ua = "Snooper/1.0"
+	}
 	return &Fetcher{
 		client: &http.Client{
 			Timeout: timeout,
@@ -44,8 +49,9 @@ func New(timeout time.Duration, retries int) *Fetcher {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
-		retries: retries,
-		timeout: timeout,
+		retries:   retries,
+		timeout:   timeout,
+		userAgent: ua,
 	}
 }
 
@@ -81,7 +87,7 @@ func (f *Fetcher) doFetch(url string) (*FetchedResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Snooper/1.0")
+	req.Header.Set("User-Agent", f.userAgent)
 
 	resp, err := f.client.Do(req)
 	if err != nil {
@@ -211,6 +217,22 @@ type HTTPError struct {
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.URL)
+}
+
+// CheckAccess performs a HEAD request and returns the status code (-1 on error)
+func (f *Fetcher) CheckAccess(url string) int {
+	req, err := http.NewRequest(http.MethodHead, url, nil)
+	if err != nil {
+		return -1
+	}
+	req.Header.Set("User-Agent", f.userAgent)
+
+	resp, err := f.client.Do(req)
+	if err != nil {
+		return -1
+	}
+	resp.Body.Close()
+	return resp.StatusCode
 }
 
 // Cleanup removes temporary files

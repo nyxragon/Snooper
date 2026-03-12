@@ -7,6 +7,16 @@ import (
 	"sync"
 )
 
+// validHosts maps service to allowed host suffixes (host must contain one)
+var validHosts = map[string][]string{
+	ServiceDrive:     {"drive.google.com", "docs.google.com"},
+	ServiceSharePoint: {"sharepoint.com"},
+	ServiceDropbox:   {"dropbox.com", "dropboxusercontent.com", "db.tt"},
+	ServiceOneDrive:  {"onedrive.live.com", "1drv.ms"},
+	ServiceBox:       {"box.com"},
+	ServiceICloud:    {"icloud.com"},
+}
+
 // Matcher extracts cloud storage links from text
 type Matcher struct {
 	patterns map[string][]*regexp.Regexp
@@ -59,6 +69,9 @@ func (m *Matcher) Match(text string) map[string][]string {
 		}
 		for _, re := range regexes {
 			for _, link := range re.FindAllString(text, -1) {
+				if !isValidCloudURL(link, service) {
+					continue
+				}
 				normalized := normalizeURL(link)
 				if !seen[service][normalized] {
 					seen[service][normalized] = true
@@ -69,6 +82,31 @@ func (m *Matcher) Match(text string) map[string][]string {
 	}
 
 	return result
+}
+
+// isValidCloudURL validates that the URL is a proper cloud storage link for the service
+func isValidCloudURL(raw, service string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	host := strings.ToLower(strings.TrimSpace(u.Host))
+	if host == "" {
+		return false
+	}
+	allowed, ok := validHosts[service]
+	if !ok {
+		return true
+	}
+	for _, suffix := range allowed {
+		if strings.Contains(host, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizeURL normalizes a URL for deduplication (e.g. strip query params that don't affect content)
