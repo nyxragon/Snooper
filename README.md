@@ -1,6 +1,27 @@
-# Snooper
+<p align="center">
+  <h1 align="center">Snooper</h1>
+</p>
 
-Snooper is a fast, reliable Go CLI tool that extracts cloud storage links (Google Drive, SharePoint, Dropbox, OneDrive, Box, iCloud) from web pages, PDFs, Office documents, and text files.
+<p align="center">
+  <strong>A fast, reliable CLI tool to extract cloud storage links from URLs and documents</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/nyxragon/Snooper/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go" alt="Go"></a>
+  <a href="https://github.com/nyxragon/Snooper"><img src="https://img.shields.io/badge/github-nyxragon%2FSnooper-181717?logo=github" alt="GitHub"></a>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#future-scope">Future Scope</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
+
+---
 
 ## Features
 
@@ -14,7 +35,7 @@ Snooper is a fast, reliable Go CLI tool that extracts cloud storage links (Googl
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/abhi-ingle/Snooper.git
+   git clone https://github.com/nyxragon/Snooper.git
    ```
 
 2. **Navigate to the project directory**:
