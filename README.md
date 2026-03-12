@@ -35,7 +35,7 @@
 
 ## Recon Workflow
 
-Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL discovery. You feed it URLs to **pages and documents** (not cloud links). It fetches each one, parses the content (HTML, PDF, Office, etc.), and extracts any cloud storage links embedded inside.
+Snooper fits in the **recon phase** of bug bounty / pentesting, right after URL discovery. You feed it URLs to **pages and documents**. It fetches each one, parses the content (HTML, PDF, Office, etc.), and extracts any cloud storage links embedded inside.
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
